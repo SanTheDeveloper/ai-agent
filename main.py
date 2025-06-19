@@ -1,41 +1,69 @@
-# Import necessary modules
+# Import standard library modules
+import sys
 import os
-import sys  # Required for reading command line arguments
-from dotenv import load_dotenv
+
+# Import Google Gemini SDK modules
 from google import genai
+from google.genai import types
 
-# Load environment variables from .env file
-load_dotenv()
+# Import dotenv for environment variable loading
+from dotenv import load_dotenv
 
-# Read the Gemini API key from environment variables
-api_key = os.environ.get("GEMINI_API_KEY")
 
-# Check if an API key was found; exit if not
-if not api_key:
-    print("Error: GEMINI_API_KEY not found in .env file.")
-    sys.exit(1)
+def main():
+    """
+    Main function to handle command-line input and initiate the Gemini API interaction.
+    """
+    # Load environment variables from .env file
+    load_dotenv()
 
-# Create the Gemini client
-client = genai.Client(api_key=api_key)
+    # Get command-line arguments (skip the script name)
+    args = sys.argv[1:]
 
-# Check if a prompt was provided as a command line argument
-if len(sys.argv) < 2:
-    print("Error: No prompt provided.")
-    print('Usage: python3 main.py "Your prompt here"')
-    sys.exit(1)
+    # Check if the user provided a prompt
+    if not args:
+        print("AI Code Assistant")
+        print('\nUsage: python main.py "your prompt here"')
+        print('Example: python main.py "How do I build a calculator app?"')
+        sys.exit(1)
 
-# Get the prompt from the command line
-prompt = sys.argv[1]
+    # Join all parts of the command line argument in case of spaces
+    user_prompt = " ".join(args)
 
-# Generate content using the Gemini model
-content_obj = client.models.generate_content(
-    model="gemini-2.0-flash-001",
-    contents=prompt,
-)
+    # Retrieve the Gemini API key from environment variables
+    api_key = os.environ.get("GEMINI_API_KEY")
 
-# Print the generated response
-print(content_obj.candidates[0].content.parts[0].text)
+    # Initialize the Gemini client with the provided API key
+    client = genai.Client(api_key=api_key)
 
-# Print token usage for transparency
-print(f"Prompt tokens: {content_obj.usage_metadata.prompt_token_count}")
-print(f"Response tokens: {content_obj.usage_metadata.candidates_token_count}")
+    # Create a message list containing the user's prompt as structured content
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+    ]
+
+    # Call the function to generate content using the Gemini model
+    generate_content(client, messages)
+
+
+def generate_content(client, messages):
+    """
+    Generates a response using the Gemini model based on the given messages.
+
+    Args:
+        client (genai.Client): The Gemini API client.
+        messages (list): A list of types.Content objects representing the conversation history.
+    """
+    # Generate content using the Gemini model
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-001",
+        contents=messages,
+    )
+
+    # Print the generated text from the response
+    print("Response:")
+    print(response.text)
+
+
+# Entry point of the program
+if __name__ == "__main__":
+    main()
