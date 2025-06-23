@@ -1,20 +1,49 @@
 # Import standard libraries
-import sys  # For command-line arguments
-import os  # For environment variable access
+import sys
+import os
 
 # Google Gemini SDK imports
 from google import genai
-from google.genai import types  # For structured content and part types
+from google.genai import types
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
 
 
+def generate_content(client, messages, verbose, system_prompt=None):
+    """
+    Generates and prints a response from the Gemini model with optional system prompt.
+
+    Args:
+        client (genai.Client): Authenticated Gemini client
+        messages (list): List of Content objects
+        verbose (bool): Print token usage details
+        system_prompt (str): System instructions for the AI
+    """
+    # Prepare config with system prompt if provided
+    config = (
+        types.GenerateContentConfig(system_instruction=system_prompt)
+        if system_prompt
+        else None
+    )
+
+    # Get response from Gemini model
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-001", contents=messages, config=config
+    )
+
+    # Print token usage if verbose mode is enabled
+    if verbose:
+        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+        print("Response tokens:", response.usage_metadata.candidates_token_count)
+
+    # Print the generated response
+    print("Response:")
+    print(response.text)
+
+
 def main():
-    """
-    Main function to handle user input and control flow.
-    Supports optional --verbose flag for detailed output.
-    """
+    """Main function to handle user input and control flow."""
     load_dotenv()  # Load environment variables
 
     # Check if --verbose flag is present
@@ -22,6 +51,9 @@ def main():
 
     # Filter out flags to get only the prompt-related arguments
     args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
+
+    # Hardcoded system prompt as per assignment
+    system_prompt = 'Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
 
     # Exit with usage message if no prompt provided
     if not args:
@@ -45,41 +77,16 @@ def main():
     # Print the prompt if verbose mode is enabled
     if verbose:
         print(f"User prompt: {user_prompt}\n")
+        print(f"System prompt: {system_prompt}\n")
 
-    # Create a list of Content objects (currently just one user message)
+    # Create conversation history
     messages = [
         types.Content(role="user", parts=[types.Part(text=user_prompt)]),
     ]
 
-    # Generate response using the Gemini model
-    generate_content(client, messages, verbose)
+    # Generate response with system prompt
+    generate_content(client, messages, verbose, system_prompt)
 
 
-def generate_content(client, messages, verbose):
-    """
-    Generates and prints a response from the Gemini model.
-
-    Args:
-        client (genai.Client): Authenticated Gemini client
-        messages (list): List of Content objects representing the conversation history
-        verbose (bool): Whether to print token usage details or not
-    """
-    # Get response from Gemini model
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-001",
-        contents=messages,
-    )
-
-    # Optionally print token usage if verbose is enabled
-    if verbose:
-        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
-        print("Response tokens:", response.usage_metadata.candidates_token_count)
-
-    # Always print the generated response
-    print("Response:")
-    print(response.text)
-
-
-# Entry point of the program
 if __name__ == "__main__":
     main()
